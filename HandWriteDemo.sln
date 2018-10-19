@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2015
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HandWriteDemo", "HandWriteDemo.csproj", "{2847796C-B61E-59A0-F8AE-7D6FACDA5324}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HandWriteDemo.Editor", "HandWriteDemo.Editor.csproj", "{F94363F9-6DA8-28F4-1589-D9B6BC90ECDB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2847796C-B61E-59A0-F8AE-7D6FACDA5324}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2847796C-B61E-59A0-F8AE-7D6FACDA5324}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2847796C-B61E-59A0-F8AE-7D6FACDA5324}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2847796C-B61E-59A0-F8AE-7D6FACDA5324}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F94363F9-6DA8-28F4-1589-D9B6BC90ECDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F94363F9-6DA8-28F4-1589-D9B6BC90ECDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F94363F9-6DA8-28F4-1589-D9B6BC90ECDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F94363F9-6DA8-28F4-1589-D9B6BC90ECDB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
