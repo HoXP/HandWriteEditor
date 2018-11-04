@@ -35,6 +35,7 @@ public class CurveMeshBuilder : MonoBehaviour
     public bool drawGizmos = true;  //是否绘制Gizmos，即表示关键点的Gizmos点及线
     public float gizmosNodeSize = 0.1f; //Gizmos球尺寸
 
+    public bool isClose = false;    //是否闭合
     public int smooth = 5;  //段数
     public float uvTiling = 1f;
     public float width = 0.2f;  //mesh宽度
@@ -94,7 +95,6 @@ public class CurveMeshBuilder : MonoBehaviour
                 Gizmos.DrawLine(prevPosition, curPosition);
                 prevPosition = curPosition;
             }
-
             if (i == selectedNodeIndex)
             {
                 Color c = Gizmos.color;
@@ -106,6 +106,14 @@ public class CurveMeshBuilder : MonoBehaviour
             {
                 Gizmos.DrawSphere(prevPosition, gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition));
             }
+        }
+        //
+        if(_mesh!=null)
+        {//
+            //Gizmos.DrawWireSphere(transform.TransformPoint(_mesh.vertices[0]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
+            //Gizmos.DrawSphere(transform.TransformPoint(_mesh.vertices[1]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
+            //Gizmos.DrawWireSphere(transform.TransformPoint(_mesh.vertices[_mesh.vertices.Length - 1]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
+            //Gizmos.DrawSphere(transform.TransformPoint(_mesh.vertices[_mesh.vertices.Length - 2]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
         }
     }
 #endif
@@ -161,16 +169,15 @@ public class CurveMeshBuilder : MonoBehaviour
         {
             BuildCurveMesh();
         }
-
         //data
         UpdateRotatedVertices();
         UpdateTangent();
         UpdateData();
-
         DrawDebugPoints();
-
-        BuildCircleMesh();
-
+        if(!isClose)
+        {
+            BuildCircleMesh();
+        }
         return true;
     }
     private void BuildPointMesh()
@@ -186,7 +193,7 @@ public class CurveMeshBuilder : MonoBehaviour
     }
     private void BuildCurveMesh()
     {
-        curvePoints = CalculateCurve(nodeList, smooth, false);
+        curvePoints = CalculateCurve(nodeList, smooth, isClose);
         List<Vector2> vertices = GetVertices(curvePoints, width * 0.5f);
         List<Vector2> verticesUV = GetVerticesUV(curvePoints);
 
@@ -313,7 +320,6 @@ public class CurveMeshBuilder : MonoBehaviour
 
     private List<CurveSegment2D> GetSegments(List<Vector2> points)
     {
-        //List<CurveSegment2D> segments = new List<CurveSegment2D>(points.Count - 1);
         List<CurveSegment2D> segments = new List<CurveSegment2D>();
         for (int i = 1; i < points.Count; i++)
         {
@@ -325,9 +331,7 @@ public class CurveMeshBuilder : MonoBehaviour
     private List<Vector2> GetVertices(List<Vector2> points, float expands)
     {
         List<CurveSegment2D> segments = GetSegments(points);
-        //List<CurveSegment2D> segments1 = new List<CurveSegment2D>(segments.Count);
         List<CurveSegment2D> segments1 = new List<CurveSegment2D>();
-        //List<CurveSegment2D> segments2 = new List<CurveSegment2D>(segments.Count);
         List<CurveSegment2D> segments2 = new List<CurveSegment2D>();
         for (int i = 0; i < segments.Count; i++)
         {
@@ -335,7 +339,6 @@ public class CurveMeshBuilder : MonoBehaviour
             segments1.Add(new CurveSegment2D(segments[i].point1 + vOffset * expands, segments[i].point2 + vOffset * expands));
             segments2.Add(new CurveSegment2D(segments[i].point1 - vOffset * expands, segments[i].point2 - vOffset * expands));
         }
-
         List<Vector2> points1 = new List<Vector2>(points.Count);
         List<Vector2> points2 = new List<Vector2>(points.Count);
         for (int i = 0; i < segments1.Count; i++)
@@ -385,12 +388,24 @@ public class CurveMeshBuilder : MonoBehaviour
             combinePoints.Add(points1[i]);
             combinePoints.Add(points2[i]);
         }
+        //闭环处理
+        if (isClose)
+        {
+            if (combinePoints.Count > 3)
+            {
+                Vector2 v21 = (combinePoints[1] + combinePoints[combinePoints.Count - 1]) / 2;
+                combinePoints[1] = v21;
+                combinePoints[combinePoints.Count - 1] = v21;
+                Vector2 v22 = (combinePoints[0] + combinePoints[combinePoints.Count - 2]) / 2;
+                combinePoints[0] = v22;
+                combinePoints[combinePoints.Count - 2] = v22;
+            }
+        }
         return combinePoints;
     }
 
     private List<Vector2> GetVerticesUV(List<Vector2> points)
     {
-        //List<Vector2> uvs = new List<Vector2>(points.Count * 2);
         List<Vector2> uvs = new List<Vector2>();
         float totalLength = 0;
         float totalLengthReciprocal = 0;
@@ -515,6 +530,7 @@ public class CurveMeshBuilder : MonoBehaviour
         }
         Stroke stroke = new Stroke();
         stroke.index = idx;
+        stroke.isClose = isClose;
         stroke.smooth = smooth;
         stroke.width = width;
         //stroke.goLclPos.x = transform.localPosition.x;
@@ -536,7 +552,7 @@ public class CurveMeshBuilder : MonoBehaviour
         //    tmpCurvePoints.Add(tmpV2);
         //}
         //stroke.curvePoints = tmpCurvePoints;
-        //stroke.tangentQuaternions = _tangentQuaternions;
+        stroke.tangentQuaternions = _tangentQuaternions;
         //stroke.vertices = _rotatedVertices;
         //stroke.triangles = _mesh.triangles;
         //stroke.uv = _mesh.uv;

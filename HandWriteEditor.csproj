@@ -223,12 +223,15 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Scripts\CurveMeshBuilder.cs" />
-    <Compile Include="Assets\Scripts\DrawCircle.cs" />
-    <Compile Include="Assets\Scripts\DrawLetterManager.cs" />
-    <Compile Include="Assets\Scripts\DrawMesh.cs" />
-    <Compile Include="Assets\Scripts\ExportMeshData.cs" />
-    <Compile Include="Assets\Scripts\UICircle.cs" />
+    <Compile Include="Assets\Scripts\2DUI\CurveMeshBuilderUI.cs" />
+    <Compile Include="Assets\Scripts\2DUI\ExportMeshDataUI.cs" />
+    <Compile Include="Assets\Scripts\3DMesh\CurveMeshBuilder.cs" />
+    <Compile Include="Assets\Scripts\3DMesh\DrawCircle.cs" />
+    <Compile Include="Assets\Scripts\3DMesh\DrawLetterManager.cs" />
+    <Compile Include="Assets\Scripts\3DMesh\DrawMesh.cs" />
+    <Compile Include="Assets\Scripts\3DMesh\ExportMeshData.cs" />
+    <Compile Include="Assets\Scripts\3DMesh\UICircle.cs" />
+    <Compile Include="Assets\Scripts\Common\UIStroke.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />

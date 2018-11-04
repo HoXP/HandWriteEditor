@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LitJson;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -47,6 +48,8 @@ public class DrawMesh : MonoBehaviour
 
     private void Awake()
     {
+        RegisterExporter();
+
         tranMeshRoot = transform.Find("MeshRoot").GetComponent<RectTransform>();
         tranDrawMeshRoot = transform.Find("DrawMeshRoot").GetComponent<RectTransform>();
         imgCurPoint = transform.Find("imgCurPoint").GetComponent<Image>();
@@ -85,6 +88,35 @@ public class DrawMesh : MonoBehaviour
         entry.eventID = EventTriggerType.PointerClick;
         entry.callback.AddListener(OnPointerClick);
         et.triggers.Add(entry);
+    }
+    private void RegisterExporter()
+    {//使LitJson支持float，Vector，Quaternion
+        JsonMapper.RegisterExporter<float>((obj, writer) => writer.Write(Convert.ToDouble(obj)));
+        JsonMapper.RegisterImporter<double, float>((input) => { return (float)input; });
+        JsonMapper.RegisterExporter<Vector2>(delegate (Vector2 obj, JsonWriter writer)
+        {
+            writer.WriteArrayStart();
+            writer.Write(Convert.ToDouble(obj.x));
+            writer.Write(Convert.ToDouble(obj.y));
+            writer.WriteArrayEnd();
+        });
+        JsonMapper.RegisterExporter<Vector3>(delegate (Vector3 obj, JsonWriter writer)
+        {
+            writer.WriteArrayStart();
+            writer.Write(Convert.ToDouble(obj.x));
+            writer.Write(Convert.ToDouble(obj.y));
+            writer.Write(Convert.ToDouble(obj.z));
+            writer.WriteArrayEnd();
+        });
+        JsonMapper.RegisterExporter<Quaternion>(delegate (Quaternion obj, JsonWriter writer)
+        {
+            writer.WriteArrayStart();
+            writer.Write(Convert.ToDouble(obj.x));
+            writer.Write(Convert.ToDouble(obj.y));
+            writer.Write(Convert.ToDouble(obj.z));
+            writer.Write(Convert.ToDouble(obj.w));
+            writer.WriteArrayEnd();
+        });
     }
 
     private void Start()
@@ -150,9 +182,7 @@ public class DrawMesh : MonoBehaviour
             Debug.LogError(string.Format("tmpLetter null"));
             return;
         }
-        //Dictionary<byte, Stroke> tmpStrokDict = tmpLetter.StrokeDict;
         List<Stroke> tmpStrokList = tmpLetter.StrokeList;
-        //foreach (var item in tmpStrokDict)
         for (int i = 0;i < tmpStrokList.Count;i++)
         {
             //Stroke tmpStrok = item.Value;

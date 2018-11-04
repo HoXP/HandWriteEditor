@@ -53,19 +53,6 @@ public class DrawLetterManager
         }
         if (LetterDict.ContainsKey(charactor))
         {
-            //Dictionary<byte, Stroke> dict = LetterDict[charactor].StrokeDict;
-            //if(dict!=null)
-            //{
-            //    if(dict.ContainsKey(stroke.index))
-            //    {
-            //        dict[stroke.index] = stroke;
-            //    }
-            //    else
-            //    {
-            //        dict.Add(stroke.index, stroke);
-            //    }
-            //}
-
             List<Stroke> list = LetterDict[charactor].StrokeList;
             bool isContain = false;
             for (int i = 0; i < list.Count; i++)
@@ -86,7 +73,6 @@ public class DrawLetterManager
         {
             Letter letter = new Letter();
             letter.Charactor = charactor;
-            //letter.StrokeDict.Add(1, stroke);
             letter.StrokeList.Add(stroke);
             LetterDict.Add(charactor, letter);
         }
@@ -108,10 +94,6 @@ public class DrawLetterManager
         if (LetterDict != null && LetterDict.ContainsKey(charactor))
         {
             Letter tmpLetter = LetterDict[charactor];
-            //if(tmpLetter != null && tmpLetter.StrokeDict != null && tmpLetter.StrokeDict.ContainsKey(idx))
-            //{
-            //    return tmpLetter.StrokeDict[idx];
-            //}
             if (tmpLetter != null && tmpLetter.StrokeList != null && tmpLetter.StrokeList.Count > 0)
             {
                 for (int i = 0; i < tmpLetter.StrokeList.Count; i++)
@@ -132,18 +114,15 @@ public class Letter
 {//字母类
     public string Charactor;
     public List<Stroke> StrokeList = new List<Stroke>();  //该字母笔画列表
-    //public Dictionary<byte, Stroke> StrokeDict = new Dictionary<byte, Stroke>();  //该字母笔画列表
 }
 [Serializable]
 public class Stroke
 {
     public byte index = 0;  //该mesh所对应字符的第几划;1基
+    public bool isClose = false;    //该mesh是否闭合
     public int smooth = 0;  //相邻关键结点之间生成曲线结点个数，越多越平滑
     public float width = 0; //该mesh的宽度
-    //public Vector2 goLclPos;    //该mesh的位置
-    //public Quaternion goLclRot; //该mesh的旋转
     public List<Vector2> nodeList;    //曲线控制点列表
-
     //反序列化时根据nodeList算法生成↓
     public List<Vector2> curvePoints;   //曲线上的点列表
     public List<Quaternion> tangentQuaternions; //曲线上的点切线列表
