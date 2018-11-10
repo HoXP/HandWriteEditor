@@ -284,6 +284,7 @@
     <Compile Include="Assets\Editor\2DUI\ExportMeshDataUIEditor.cs" />
     <Compile Include="Assets\Editor\3DMesh\CurveMeshBuilderEditor.cs" />
     <Compile Include="Assets\Editor\3DMesh\ExportMeshDataEditor.cs" />
+    <Compile Include="Assets\Editor\UIComponentMenuItemEditor.cs" />
     <Compile Include="Assets\Editor\UIStrokeEditor.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

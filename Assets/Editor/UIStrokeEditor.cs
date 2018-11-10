@@ -1,9 +1,9 @@
 ﻿using UnityEditor;
+using UnityEditor.UI;
 using UnityEngine;
-using UnityEngine.UI;
 
 [CustomEditor(typeof(UIStroke))]
-public class UIStrokeEditor : Editor
+public class UIStrokeEditor : GraphicEditor
 {
     enum DataGenMode
     {//数据生成方式
@@ -21,8 +21,9 @@ public class UIStrokeEditor : Editor
     //void Awake()
     //{
     //}
-    public void OnEnable()
+    protected override void OnEnable()
     {
+        base.OnEnable();
         _script = target as UIStroke;
         so = new SerializedObject(target);
         spChar = so.FindProperty("_character");
@@ -32,7 +33,6 @@ public class UIStrokeEditor : Editor
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
-
         enumPopupVal = (DataGenMode)EditorGUILayout.EnumPopup("数据生成方式", enumPopupVal);
         switch (enumPopupVal)
         {
@@ -40,14 +40,14 @@ public class UIStrokeEditor : Editor
                 EditorGUILayout.PropertyField(spChar);
                 EditorGUILayout.PropertyField(spIdx);
                 EditorGUILayout.BeginHorizontal();
-                _script._jsonFile = EditorGUILayout.ObjectField("JsonFile", _script._jsonFile, typeof(TextAsset), false) as TextAsset;
-                if (_script._jsonFile != null)
-                {
-                    if (GUILayout.Button("Gen"))
-                    {
-                        _script.InitDataByJson();
-                    }
-                }
+                //_script._jsonFile = EditorGUILayout.ObjectField("JsonFile", _script._jsonFile, typeof(TextAsset), false) as TextAsset;
+                //if (_script._jsonFile != null)
+                //{
+                //    if (GUILayout.Button("Gen"))
+                //    {
+                //        _script.InitDataByJson();
+                //    }
+                //}
                 EditorGUILayout.EndHorizontal();
                 break;
             case DataGenMode.Editor:

@@ -50,7 +50,7 @@ public class CurveMeshBuilder : MonoBehaviour
     //UI
     private Image imgCurvePoint = null;
     private RectTransform tranCurvePointRoot = null;
-    private UICircle tplCircleMesh = null;
+    //private UICircle tplCircleMesh = null;
 
     private void Awake()
     {
@@ -59,8 +59,8 @@ public class CurveMeshBuilder : MonoBehaviour
 
     private void Init()
     {
-        tplCircleMesh = transform.root.Find("tplCircleMesh").GetComponent<UICircle>();
-        tplCircleMesh.gameObject.SetActive(false);
+        //tplCircleMesh = transform.root.Find("tplCircleMesh").GetComponent<UICircle>();
+        //tplCircleMesh.gameObject.SetActive(false);
         if (_mesh == null)
         {
             _mesh = new Mesh();
@@ -226,28 +226,28 @@ public class CurveMeshBuilder : MonoBehaviour
     }
     private void BuildCircleMesh()
     {
-        UICircle[] items = transform.GetComponentsInChildren<UICircle>();
-        if (items != null && items.Length > 0)
-        {
-            for (int i = items.Length - 1; i >= 0; --i)
-            {
-                GameObject.DestroyImmediate(items[i].gameObject);
-            }
-        }
-        int count = Math.Min(2, nodeList.Count);
-        for (int j = 0; j < count; ++j)
-        {
-            UICircle item = GameObject.Instantiate<UICircle>(tplCircleMesh, transform);
-            item.gameObject.SetActive(true);
-            bool isStart = j % 2 == 0;
-            Vector3 pos = isStart ? curvePoints[0] : curvePoints[curvePoints.Count - 1];
-            Quaternion rot = Quaternion.identity;
-            if(_tangentQuaternions!=null&& _tangentQuaternions.Count > 1)
-            {
-                rot = isStart? _tangentQuaternions[0] : _tangentQuaternions[_tangentQuaternions.Count - 1];
-            }
-            item.Flush(isStart, count > 1,width, pos, rot);
-        }
+        //UICircle[] items = transform.GetComponentsInChildren<UICircle>();
+        //if (items != null && items.Length > 0)
+        //{
+        //    for (int i = items.Length - 1; i >= 0; --i)
+        //    {
+        //        GameObject.DestroyImmediate(items[i].gameObject);
+        //    }
+        //}
+        //int count = Math.Min(2, nodeList.Count);
+        //for (int j = 0; j < count; ++j)
+        //{
+        //    UICircle item = GameObject.Instantiate<UICircle>(tplCircleMesh, transform);
+        //    item.gameObject.SetActive(true);
+        //    bool isStart = j % 2 == 0;
+        //    Vector3 pos = isStart ? curvePoints[0] : curvePoints[curvePoints.Count - 1];
+        //    Quaternion rot = Quaternion.identity;
+        //    if(_tangentQuaternions!=null&& _tangentQuaternions.Count > 1)
+        //    {
+        //        rot = isStart? _tangentQuaternions[0] : _tangentQuaternions[_tangentQuaternions.Count - 1];
+        //    }
+        //    item.Flush(isStart, count > 1,width, pos, rot);
+        //}
     }
     private void DrawDebugPoints()
     {

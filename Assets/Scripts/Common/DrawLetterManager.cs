@@ -89,6 +89,25 @@ public class DrawLetterManager
             Debug.LogError(string.Format("LetterDict无数据"));
         }
     }
+    internal void SetCurvePoints(string charactor, int idx, string jsonStr)
+    {
+        if (LetterDict != null && LetterDict.ContainsKey(charactor))
+        {
+            Letter tmpLetter = LetterDict[charactor];
+            if (tmpLetter != null && tmpLetter.StrokeList != null && tmpLetter.StrokeList.Count > 0)
+            {
+                for (int i = 0; i < tmpLetter.StrokeList.Count; i++)
+                {
+                    if (tmpLetter.StrokeList[i].index == idx)
+                    {
+                        List<Vector2> v2List = new List<Vector2>();
+                        v2List = JsonMapper.ToObject<List<Vector2>>(jsonStr);
+                        tmpLetter.StrokeList[i].curvePoints = v2List;
+                    }
+                }
+            }
+        }
+    }
     internal Stroke GetStroke(string charactor, byte idx)
     {
         if (LetterDict != null && LetterDict.ContainsKey(charactor))

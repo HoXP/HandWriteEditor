@@ -32,6 +32,10 @@ public class CurveMeshBuilderUI : MonoBehaviour
     {
         _uiStroke = GetComponent<UIStroke>();
     }
+    private void Update()
+    {
+        BuildMesh();
+    }
 
 #if UNITY_EDITOR
     void OnDrawGizmos()
@@ -65,7 +69,6 @@ public class CurveMeshBuilderUI : MonoBehaviour
                 Gizmos.DrawSphere(prevPosition, gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition));
             }
         }
-        //
         //if(_mesh!=null)
         //{
         //    Gizmos.DrawWireSphere(transform.TransformPoint(_mesh.vertices[0]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
@@ -119,7 +122,7 @@ public class CurveMeshBuilderUI : MonoBehaviour
         {
             _uiStroke = GetComponent<UIStroke>();
         }
-        _uiStroke.InitData(_nodeList, width, smooth, uvTiling, isClose);
+        _uiStroke.InitData(_nodeList.ToArray(), width, smooth, isClose);
         UpdateData();
         return true;
     }

@@ -227,10 +227,11 @@
     <Compile Include="Assets\Scripts\2DUI\ExportMeshDataUI.cs" />
     <Compile Include="Assets\Scripts\3DMesh\CurveMeshBuilder.cs" />
     <Compile Include="Assets\Scripts\3DMesh\DrawCircle.cs" />
-    <Compile Include="Assets\Scripts\3DMesh\DrawLetterManager.cs" />
-    <Compile Include="Assets\Scripts\3DMesh\DrawMesh.cs" />
     <Compile Include="Assets\Scripts\3DMesh\ExportMeshData.cs" />
-    <Compile Include="Assets\Scripts\3DMesh\UICircle.cs" />
+    <Compile Include="Assets\Scripts\Common\DrawLetterManager.cs" />
+    <Compile Include="Assets\Scripts\Common\DrawMeshPanel.cs" />
+    <Compile Include="Assets\Scripts\Common\MeshRoot.cs" />
+    <Compile Include="Assets\Scripts\Common\UILine.cs" />
     <Compile Include="Assets\Scripts\Common\UIStroke.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
