@@ -478,7 +478,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23f8ded4538b70d4087071ae7ed00b35, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  charactor: h
+  charactor: s
   curIdx: 1
   BeginDragDistanceThreshold: 100
   countDownInternal: 0.02
