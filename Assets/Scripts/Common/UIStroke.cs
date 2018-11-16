@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-[AddComponentMenu("UI/17zuoye/Stroke")]
+[AddComponentMenu("UI/17zuoye/UIStroke")]
 public class UIStroke : MaskableGraphic
 {//UI笔画类，使用插值mesh来生成笔画形状
     public struct CurveSegment2D
@@ -48,8 +48,10 @@ public class UIStroke : MaskableGraphic
     private int _curveVertexCount = 0;  //曲线定点数
     private int _curCurveIdx = 0;
     private float _percent = 0;
-    private Vector3[] _bakLineVertices = new Vector3[4];    //备份直线顶点数据
+    private bool _isPartial = false;    //标记是否渲染部分笔画
+    //private Vector3[] _bakLineVertices = new Vector3[4];    //备份直线顶点数据
     private Vector3[] _bakESemiCircleVertices = new Vector3[SemiCircleSegment];    //备份尾端半圆数据
+    private Vector3[] _bakCloseRingLast2Vertices = new Vector3[2];    //备份闭环最后两个顶点位置
 
     public void InitData(Vector2[] nodeList, float width, int smooth, bool isClose = false)
     {
@@ -82,12 +84,19 @@ public class UIStroke : MaskableGraphic
         }
         //_uvTiling = uvTiling;
         _isClose = isClose;
+        _isPartial = false;
         CalculateCurve();
+        CalTangent();
         BuildCurveMesh();
-        if (_strokeType == StrokeType.Line)
+        if (_isClose && _vertices != null && _vertices.Count > 1)
         {
-            _bakLineVertices = _vertices.GetRange(0, 4).ToArray();
+            _bakCloseRingLast2Vertices = _vertices.GetRange(_vertices.Count - 2, 2).ToArray();
+            HandelClosedRing();
         }
+        //if (_strokeType == StrokeType.Line)
+        //{
+        //    _bakLineVertices = _vertices.GetRange(0, 4).ToArray();
+        //}
         SetAllDirty();
     }
 
@@ -126,11 +135,14 @@ public class UIStroke : MaskableGraphic
         {
             CrossFadeAlpha(1, 0, false);
         }
+        _isPartial = true;
         if (_curCurveIdx >= _curvePoints.Count)
         {
             _curCurveIdx = _curvePoints.Count - 1;
+            _isPartial = false;
         }
-        BuildCurveMesh(true);
+        BuildCurveMesh();
+        HandelClosedRing();
         SetAllDirty();
     }
 
@@ -197,9 +209,26 @@ public class UIStroke : MaskableGraphic
         sb.Append("]");
         return sb.ToString();
     }
+    internal string GetStrokeVertices()
+    {
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        sb.Append("[");
+        for (int i = 0; i < _vertices.Count; i++)
+        {
+            sb.Append("{");
+            sb.AppendFormat("\"x\":{0},\"y\":{1},\"z\":{2}", _vertices[i].x, _vertices[i].y, _vertices[i].z);
+            sb.Append("}");
+            if (i < _vertices.Count - 1)
+            {
+                sb.Append(",");
+            }
+        }
+        sb.Append("]");
+        return sb.ToString();
+    }
 
     #region 生成mesh数据
-    private void BuildCurveMesh(bool isPartial = false)
+    private void BuildCurveMesh()
     {//isPartial:是否是部分的
         ResetVUT();
         if (_strokeType == StrokeType.Point)
@@ -209,7 +238,7 @@ public class UIStroke : MaskableGraphic
         }
         else
         {
-            if (!isPartial)
+            if(!_isPartial)
             {
                 _curCurveIdx = _curvePoints.Count - 1;
             }
@@ -232,7 +261,6 @@ public class UIStroke : MaskableGraphic
                 _triangles.Add(i + 1);
             }
             //
-            CalTangent();
             if (!_isClose)
             {
                 AddSectorMeshData();
@@ -363,29 +391,28 @@ public class UIStroke : MaskableGraphic
                 points2.Add(segments2[i].point2);
             }
         }
-        if (points.Count != points1.Count || points.Count != points2.Count)
-        {
-            Debug.LogWarning(string.Format("{0}-{1}-{2}", points.Count, points1.Count, points2.Count));
-        }
         for (int i = 0; i < points.Count; i++)
         {
             combinePoints.Add(points1[i]);
             combinePoints.Add(points2[i]);
         }
+        return combinePoints;
+    }
+    private void HandelClosedRing()
+    {//处理闭环
         //闭环处理
-        if (_isClose)
+        if (_isClose && _vertices.Count > 3)
         {
-            if (combinePoints.Count > 3)
+            Vector2 v20 = (_vertices[0] + _bakCloseRingLast2Vertices[0]) / 2;
+            Vector2 v21 = (_vertices[1] + _bakCloseRingLast2Vertices[1]) / 2;
+            _vertices[0] = v20;
+            _vertices[1] = v21;
+            if (!_isPartial)
             {
-                Vector2 v21 = (combinePoints[1] + combinePoints[combinePoints.Count - 1]) / 2;
-                combinePoints[1] = v21;
-                combinePoints[combinePoints.Count - 1] = v21;
-                Vector2 v22 = (combinePoints[0] + combinePoints[combinePoints.Count - 2]) / 2;
-                combinePoints[0] = v22;
-                combinePoints[combinePoints.Count - 2] = v22;
+                _vertices[_vertices.Count - 2] = v20;
+                _vertices[_vertices.Count - 1] = v21;
             }
         }
-        return combinePoints;
     }
     private List<Vector2> GetVerticesUV(List<Vector2> points)
     {
@@ -446,23 +473,25 @@ public class UIStroke : MaskableGraphic
         return true;
     }
     private void CalTangent()
-    {//计算切线角度
-        if (_vertices == null || _vertices.Count < 1)
+    {//计算切线角度;使用curvePoint来计算
+        if(_curvePoints == null)
+        {
+            return;
+        }
+        if(_curvePoints.Count < 2)
         {
             return;
         }
         _tangentQuaternions = new List<Quaternion>();
-        for (int i = 0; i < _vertices.Count; i += 2)
+        for (int i = 0; i < _curvePoints.Count; i++)
         {
             if (i == 0)
             {
-                Vector3 v3Vertical = Vector3.Cross(_vertices[1] - _vertices[0], Vector3.forward);
-                _tangentQuaternions.Add(Quaternion.Euler(0, 0, Vector2.SignedAngle(Vector2.up, v3Vertical.normalized)));
+                _tangentQuaternions.Add(Quaternion.FromToRotation(Vector3.up, _curvePoints[0] - _curvePoints[1]));
             }
             else
             {
-                Vector3 v3Vertical = Vector3.Cross(_vertices[i] - _vertices[i + 1], Vector3.forward);
-                _tangentQuaternions.Add(Quaternion.Euler(0, 0, Vector2.SignedAngle(Vector2.up, v3Vertical.normalized)));
+                _tangentQuaternions.Add(Quaternion.FromToRotation(Vector3.up, _curvePoints[i] - _curvePoints[i - 1]));
             }
         }
     }
@@ -519,15 +548,15 @@ public class UIStroke : MaskableGraphic
         {
             if (i == 0)
             {//首
+                _triangles.Add(_curveVertexCount + triangleCount - 1);
+                _triangles.Add(0);
                 _triangles.Add(_curveVertexCount);
-                _triangles.Add(1);
-                _triangles.Add(_curveVertexCount + 1);
             }
             else if (i == triangleCount - 1)
             {//尾
                 _triangles.Add(_curveVertexCount);
-                _triangles.Add(_curveVertexCount + triangleCount - 1);
-                _triangles.Add(0);
+                _triangles.Add(1);
+                _triangles.Add(_curveVertexCount + 1);
             }
             else
             {
@@ -540,10 +569,6 @@ public class UIStroke : MaskableGraphic
         int curveVertexCountWithSemiCircle = _vertices.Count; //加了半圆的顶点数
         pos = _curvePoints[_curCurveIdx];
         rot = _tangentQuaternions[_curCurveIdx];
-        if (_curCurveIdx == 0)
-        {
-            rot = rot * Quaternion.Euler(0, 0, 180);
-        }
         angleCur = angleRad;
         for (int i = 0; i < verticesCount; i++)
         {
@@ -563,22 +588,22 @@ public class UIStroke : MaskableGraphic
             //bak
             if (_strokeType == StrokeType.Line)
             {
-                _bakESemiCircleVertices[i].Set(tmpV.x, tmpV.y, tmpV.z);
+                _bakESemiCircleVertices[i].Set(tmpV.x, tmpV.y, 0);
             }
         }
         for (int i = 0; i < triangleCount; i++)
         {
             if (i == 0)
             {//首
+                _triangles.Add(curveVertexCountWithSemiCircle + triangleCount - 1);
+                _triangles.Add(_curveVertexCount - 1);
                 _triangles.Add(curveVertexCountWithSemiCircle);
-                _triangles.Add(_curveVertexCount - 2);
-                _triangles.Add(curveVertexCountWithSemiCircle + 1);
             }
             else if (i == triangleCount - 1)
             {//尾
                 _triangles.Add(curveVertexCountWithSemiCircle);
-                _triangles.Add(_curveVertexCount - 1);
-                _triangles.Add(curveVertexCountWithSemiCircle + triangleCount - 1);
+                _triangles.Add(_curveVertexCount - 2);
+                _triangles.Add(curveVertexCountWithSemiCircle + 1);
             }
             else
             {
@@ -671,44 +696,4 @@ public class UIStroke : MaskableGraphic
         }
     }
     #endregion
-
-#if UNITY_EDITOR
-    private void OnDrawGizmos()
-    {
-        if (_curvePoints != null && _curvePoints.Count > 1)
-        {
-            Gizmos.DrawLine(transform.TransformVector(_curvePoints[0]), transform.TransformVector(_curvePoints[1]));
-        }
-        if (_vertices != null && _vertices.Count > 0)
-        {
-            for (int i = 0; i < _vertices.Count; i++)
-            {
-                if (i < 4)
-                {
-                    if (i % 2 == 0)
-                    {
-                        Gizmos.color = Color.cyan;
-                    }
-                    else
-                    {
-                        Gizmos.color = Color.green;
-                    }
-                    Gizmos.DrawWireSphere(transform.TransformVector(_vertices[i]), .04f);
-                }
-                else
-                {
-                    if (i % 2 == 0)
-                    {
-                        Gizmos.color = Color.red;
-                    }
-                    else
-                    {
-                        Gizmos.color = Color.blue;
-                    }
-                    Gizmos.DrawWireSphere(transform.TransformVector(_vertices[i]), .03f);
-                }
-            }
-        }
-    }
-#endif
 }

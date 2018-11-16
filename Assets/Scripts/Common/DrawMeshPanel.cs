@@ -375,30 +375,15 @@ public class DrawMeshPanel : MonoBehaviour
     }
     
     private void UpdateCurCurvePointIdx(Vector2 screenPos, Camera cam)
-    {//根据屏幕坐标获取最近的curvePoints元素索引
+    {//根据屏幕坐标更新最近的curvePoints元素索引
         if (_curStroke == null || _curStroke.curvePoints == null)
         {
             return;
         }
         _pointTouch = Vector2.zero;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(transform.GetComponent<RectTransform>(), screenPos, cam, out _pointTouch);
-
-        //找距离当前touch点最近的曲线点
-        //Vector2 pos = _curStroke.curvePoints[_nearestIdx];
-        //float nearestDistance = Vector2.Distance(_pointTouch, pos);
-        //for (int i = 1; i < _curStroke.curvePoints.Count; i++)
-        //{
-        //    pos = _curStroke.curvePoints[i];
-        //    float curDistance = Vector2.Distance(_pointTouch, pos);
-        //    if (curDistance < nearestDistance)
-        //    {
-        //        nearestDistance = curDistance;
-        //        _nearestIdx = i;
-        //    }
-        //}
-
         int lastIdx = _curStroke.curvePoints.Count - 1;
-        for (int i = _curCurvePointIdx; i < Mathf.Min(_curCurvePointIdx + _curStroke.smooth, lastIdx + 1); i++)
+        for (int i = _curCurvePointIdx; i < Mathf.Min(_curCurvePointIdx + _curStroke.smooth, lastIdx); i++)
         {
             Vector2 pS = _curStroke.curvePoints[i];
             Vector2 pC = _curStroke.curvePoints[i >= lastIdx ? lastIdx : i + 1];
@@ -407,8 +392,8 @@ public class DrawMeshPanel : MonoBehaviour
             float dotE = Vector2.Dot(_pointTouch - pC, pE - pC);
             if (dotS > 0 && dotE <= 0)
             {
-                _curCurvePointIdx = i;
-                Debug.Log(string.Format("{0}/{1}:{2},{3}", i, _curStroke.curvePoints.Count, dotS, dotE));
+                _curCurvePointIdx = i + 1;
+                //Debug.Log(string.Format("{0}/{1}:{2},{3}", _curCurvePointIdx, _curStroke.curvePoints.Count, dotS, dotE));
             }
         }
     }

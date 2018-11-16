@@ -1,6 +1,5 @@
 ﻿using UnityEditor;
 using UnityEditor.UI;
-using UnityEngine;
 
 [CustomEditor(typeof(UIStroke))]
 public class UIStrokeEditor : GraphicEditor
@@ -11,20 +10,17 @@ public class UIStrokeEditor : GraphicEditor
         Json,   //使用json文件生成
     }
 
-    private UIStroke _script;
+    //private UIStroke _script;
     public SerializedObject so;
     private DataGenMode enumPopupVal;
     public SerializedProperty spChar;
     public SerializedProperty spIdx;
     //public SerializedProperty spJsonFile;
-
-    //void Awake()
-    //{
-    //}
+    
     protected override void OnEnable()
     {
         base.OnEnable();
-        _script = target as UIStroke;
+        //_script = target as UIStroke;
         so = new SerializedObject(target);
         spChar = so.FindProperty("_character");
         spIdx = so.FindProperty("_index");

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using LitJson;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class MeshRoot : MonoBehaviour
@@ -53,6 +54,10 @@ public class MeshRoot : MonoBehaviour
             else
             {
                 stk.color = Color.green;
+#if UNITY_EDITOR
+                _curvePoints = JsonMapper.ToObject<List<Vector2>>(stk.GetStrokeData());
+                _vertices = JsonMapper.ToObject<List<Vector3>>(stk.GetStrokeVertices());
+#endif
             }
             DrawLetterManager.Instance.SetCurvePoints(charactor, tmpStrok.index, stk.GetStrokeData());
         }
@@ -71,4 +76,46 @@ public class MeshRoot : MonoBehaviour
             GameObject.Destroy(arr1[i].gameObject);
         }
     }
+
+#if UNITY_EDITOR
+    private List<Vector2> _curvePoints = null;
+    private List<Vector3> _vertices = null;
+    private void OnDrawGizmos()
+    {
+        if (_curvePoints != null && _curvePoints.Count > 1)
+        {
+            Gizmos.DrawLine(transform.TransformVector(_curvePoints[0]), transform.TransformVector(_curvePoints[1]));
+        }
+        if (_vertices != null && _vertices.Count > 0)
+        {
+            for (int i = 0; i < _vertices.Count; i++)
+            {
+                if (i < 4)
+                {
+                    if (i % 2 == 0)
+                    {
+                        Gizmos.color = Color.cyan;
+                    }
+                    else
+                    {
+                        Gizmos.color = Color.green;
+                    }
+                    Gizmos.DrawWireSphere(transform.TransformVector(_vertices[i]), .04f);
+                }
+                else
+                {
+                    if (i % 2 == 0)
+                    {
+                        Gizmos.color = Color.red;
+                    }
+                    else
+                    {
+                        Gizmos.color = Color.blue;
+                    }
+                    Gizmos.DrawWireSphere(transform.TransformVector(_vertices[i]), .03f);
+                }
+            }
+        }
+    }
+#endif
 }
