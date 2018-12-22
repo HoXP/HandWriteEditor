@@ -13,14 +13,6 @@ public class UIComponentMenuItemEditor : ScriptableObject
         Selection.activeGameObject = go;
     }
 
-    [MenuItem("GameObject/UI/17zuoye-UILine", false)]
-    static public void AddUILine(MenuCommand menuCommand)
-    {
-        GameObject go = CreateUIElementRoot("UILine", menuCommand, s_ImageGUIElementSize);
-        go.AddComponent<UILine>();
-        Selection.activeGameObject = go;
-    }
-
     #region Unity Builder section  - Do not change unless UI Source (Editor\MenuOptions) changes
     #region Unity Builder properties  - Do not change unless UI Source (Editor\MenuOptions) changes
     private const string kUILayerName = "UI";

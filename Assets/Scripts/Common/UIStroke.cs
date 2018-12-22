@@ -1,27 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 [AddComponentMenu("UI/17zuoye/UIStroke")]
 public class UIStroke : MaskableGraphic
 {//UI笔画类，使用插值mesh来生成笔画形状
-    public struct CurveSegment2D
-    {//表示曲线每段的结构体
-        public Vector2 point1, point2;  //该段起点及终点坐标
-        public CurveSegment2D(Vector2 point1, Vector2 point2)
-        {//构造方法
-            this.point1 = point1;
-            this.point2 = point2;
-        }
-        public Vector2 SegmentVector
-        {//该段向量
-            get
-            {
-                return point2 - point1;
-            }
-        }
-    }
-
     public enum StrokeType
     {//笔画类型
         Point,
@@ -32,40 +16,38 @@ public class UIStroke : MaskableGraphic
 
     private bool _isClose = false;  //是否闭合
     private float _width = 20f;     //笔画宽度
-    private int _smooth = 5;        //关键点之间要生成的段数
-    private float _uvTiling = 1f;
+    private int _smooth = 1;        //关键点之间要生成的段数
 
     private const int SemiCircleSegment = 10;   //半圆段数
 
-    private List<Vector2> _nodeList = null;     //结点列表
-    private List<Vector2> _curvePoints = null;  //曲线每个矩形边中点;Count永远是顶点数的一半
-    private List<Vector2> _curvePointsPartial = null;
-    private List<Quaternion> _tangentQuaternions = null;    //切线列表
-    private List<Vector3> _vertices = null; //顶点数组
-    private List<Vector2> _uv = null;       //uv数组
-    private List<int> _triangles = null;    //三角形数组
+    private Vector2[] _nodeList = null;     //结点列表
+    private Vector2[] _curvePoints = null;  //曲线每个矩形边中点;Count永远是顶点数的一半
+    private Quaternion[] _tangentQuaternions = null;    //切线列表
+    private Vector3[] _vertices = null; //顶点数组
 
-    private int _curveVertexCount = 0;  //曲线定点数
-    private int _curCurveIdx = 0;
-    private float _percent = 0;
-    private bool _isPartial = false;    //标记是否渲染部分笔画
-    //private Vector3[] _bakLineVertices = new Vector3[4];    //备份直线顶点数据
-    private Vector3[] _bakESemiCircleVertices = new Vector3[SemiCircleSegment];    //备份尾端半圆数据
-    private Vector3[] _bakCloseRingLast2Vertices = new Vector3[2];    //备份闭环最后两个顶点位置
+    private float _percent = 1;
+
+    private Vector3[] _verticesCurve = null;    //备份曲线顶点数据
+    private Vector3[] _verticesSCS = null;  //备份首端半圆数据
+    private Vector3[] _verticesSCE = null;  //备份尾端半圆数据
+    private Vector3[] _verticesSCEPatial = null;  //运动中的尾端半圆数据
+    private Vector3[] _verticesCloseRingLast2 = null;   //备份闭环最后两个顶点位置
+    private UIVertex[] _polys = null;   //四边形数组
 
     public void InitData(Vector2[] nodeList, float width, int smooth, bool isClose = false)
     {
+        _polys = new UIVertex[4];
         if (nodeList == null || nodeList.Length < 1)
         {
             Debug.LogError("No node in nodeList.");
             return;
         }
-        _nodeList = new List<Vector2>(nodeList);
-        if (_nodeList.Count == 1)
+        _nodeList = nodeList;
+        if (_nodeList.Length == 1)
         {
             _strokeType = StrokeType.Point;
         }
-        else if (_nodeList.Count == 2)
+        else if (_nodeList.Length == 2)
         {
             _strokeType = StrokeType.Line;
         }
@@ -82,51 +64,43 @@ public class UIStroke : MaskableGraphic
         {
             _smooth = smooth;
         }
-        //_uvTiling = uvTiling;
         _isClose = isClose;
-        _isPartial = false;
         CalculateCurve();
         CalTangent();
-        BuildCurveMesh();
-        if (_isClose && _vertices != null && _vertices.Count > 1)
+        InitVT();
+        if (_isClose && _verticesCurve != null && _verticesCurve.Length > 1)
         {
-            _bakCloseRingLast2Vertices = _vertices.GetRange(_vertices.Count - 2, 2).ToArray();
+            _verticesCloseRingLast2 = new Vector3[]
+                {
+                    _verticesCurve[_verticesCurve.Length - 2],
+                    _verticesCurve[_verticesCurve.Length - 1]
+                };
             HandelClosedRing();
         }
-        //if (_strokeType == StrokeType.Line)
-        //{
-        //    _bakLineVertices = _vertices.GetRange(0, 4).ToArray();
-        //}
         SetAllDirty();
     }
-
-    public void UpdateLinePercent(float percent)
-    {//直线：更新当前直线比例；percent∈[0,1]
-        percent = Mathf.Clamp01(percent);
-        _percent = percent;
-        if (_percent == 0)
+    private void InitVT()
+    {
+        ResetVUT();
+        if(_strokeType == StrokeType.Point)
         {
-            CrossFadeAlpha(0, 0, false);
+            CalCircleMeshData(SemiCircleSegment * 2);
         }
         else
         {
-            CrossFadeAlpha(1, 0, false);
+            _verticesCurve = MeshUtils.GetVertices(_curvePoints, _width * 0.5f);
+            if (!_isClose)
+            {
+                AddSectorMeshData();
+            }
+            UpdatePercent(1);
         }
-        Vector3 vES = _curvePoints[1] - _curvePoints[0];
-        Vector3 vESP = vES * _percent;
-        _vertices[2] = _vertices[0] + vESP;
-        _vertices[3] = _vertices[1] + vESP;
-        //平移尾端半圆
-        for (int i = 4 + SemiCircleSegment, j = 0; i < _vertices.Count && j < _bakESemiCircleVertices.Length; i++, j++)
-        {
-            _vertices[i] = _bakESemiCircleVertices[j] - vES + vESP;
-        }
-        SetAllDirty();
     }
-    public void UpdateCurCurveIdx(int curCurveIdx)
-    {//曲线：更新_curCurveIdx，以确定当前渲染曲线mesh的部分
-        _curCurveIdx = curCurveIdx;
-        if (_curCurveIdx < 0)
+    
+    public void UpdatePercent(float percent)
+    {//直线：更新当前直线比例；percent∈[0,1]
+        _percent = Mathf.Clamp01(percent);
+        if (_percent == 0)
         {
             CrossFadeAlpha(0, 0, false);
             return;
@@ -135,73 +109,173 @@ public class UIStroke : MaskableGraphic
         {
             CrossFadeAlpha(1, 0, false);
         }
-        _isPartial = true;
-        if (_curCurveIdx >= _curvePoints.Count)
+        if (_strokeType == StrokeType.Point)
         {
-            _curCurveIdx = _curvePoints.Count - 1;
-            _isPartial = false;
         }
-        BuildCurveMesh();
-        HandelClosedRing();
+        else if (_strokeType == StrokeType.Line)
+        {
+            _vertices = new Vector3[4];
+            Array.Copy(_verticesCurve, _vertices, _verticesCurve.Length);
+            Vector3 vES = _curvePoints[1] - _curvePoints[0];
+            Vector3 vESP = vES * _percent;
+            _vertices[2] = _verticesCurve[0] + vESP;
+            _vertices[3] = _verticesCurve[1] + vESP;
+            //尾端半圆位置
+            _verticesSCEPatial = new Vector3[_verticesSCE.Length];
+            Vector3 vES1P = -vES * (1 - _percent);
+            for (int i = 0; i < _verticesSCEPatial.Length; i++)
+            {
+                _verticesSCEPatial[i] = _verticesSCE[i] + vES1P;
+            }
+        }
+        else
+        {
+            int len = GetCurveIdxByPercent(_percent) + 1;
+            _vertices = new Vector3[len * 2];
+            Array.Copy(_verticesCurve, _vertices, _vertices.Length);
+            //尾端半圆位置
+            AddSectorMeshDataVer(false);
+            _verticesSCEPatial = new Vector3[_verticesSCE.Length];
+            Array.Copy(_verticesSCE, _verticesSCEPatial, _verticesSCEPatial.Length);
+        }
         SetAllDirty();
+    }
+    private int GetCurveIdxByPercent(float percent)
+    {
+        if(_curvePoints == null)
+        {
+            return 0;
+        }
+        return (int)(_percent * (_curvePoints.Length - 1));
     }
 
     protected override void OnPopulateMesh(VertexHelper vh)
     {
         vh.Clear();
-        if (_vertices == null || _vertices.Count < 1)
+        if (_strokeType == StrokeType.Point)
         {
-            return;
+            List<UIVertex> scVertices = new List<UIVertex>();
+            int segments = SemiCircleSegment * 2;
+            for (int i = 0; i < segments; i++)
+            {
+                int idx = i * 3;
+                scVertices.Add(GetUIVertexByPos(_vertices[0]));
+                if (i == segments - 1)
+                {//尾闭合
+                    scVertices.Add(GetUIVertexByPos(_vertices[1]));
+                    scVertices.Add(GetUIVertexByPos(_vertices[segments]));
+                }
+                else
+                {
+                    scVertices.Add(GetUIVertexByPos(_vertices[i + 2]));
+                    scVertices.Add(GetUIVertexByPos(_vertices[i + 1]));
+                }
+            }
+            vh.AddUIVertexTriangleStream(scVertices);
         }
-        if (_uv == null || _uv.Count < 1)
+        else
         {
-            return;
-        }
-        if (_vertices.Count != _uv.Count)
-        {
-            Debug.LogError("顶点数和UV数不一致");
-            return;
-        }
-        if (_triangles == null || _triangles.Count < 1)
-        {
-            return;
-        }
-        if (_curCurveIdx < 0 || _curCurveIdx >= _curvePoints.Count)
-        {
-            return;
-        }
-        for (int i = 0; i < _vertices.Count; i++)
-        {
-            UIVertex vert = UIVertex.simpleVert;
-            vert.color = color;
-            vert.position = _vertices[i];
-            vert.uv0 = _uv[i];
-            vh.AddVert(vert);
-        }
-        for (int i = 0; i < _triangles.Count; i += 3)
-        {
-            vh.AddTriangle(_triangles[i], _triangles[i + 1], _triangles[i + 2]);
+            if (!_isClose && _verticesSCS != null && _verticesSCS.Length > 0 && _verticesSCE != null && _verticesSCE.Length > 0)
+            {//半圆
+                List<UIVertex> scVertices = new List<UIVertex>();
+                scVertices.AddRange(GetSemiCircleVertices(true));
+                scVertices.AddRange(GetSemiCircleVertices(false));
+                vh.AddUIVertexTriangleStream(scVertices);
+            }
+            if (_vertices != null && _vertices.Length > 0)
+            {//曲线
+                for (int i = 0; i + 2 < _vertices.Length; i += 2)
+                {//i永为偶数
+                    for (int j = 0; j < _polys.Length; j++)
+                    {//j∈[0,3]
+                        UIVertex vert = UIVertex.simpleVert;
+                        vert.color = color;
+                        vert.position = _vertices[i + j];
+                        vert.uv0 = Vector2.zero;
+                        _polys[j] = vert;
+                    }
+                    UIVertex tmp = _polys[0];
+                    _polys[0] = _polys[1];
+                    _polys[1] = tmp;
+                    vh.AddUIVertexQuad(_polys);
+                }
+            }
         }
     }
-
-    private int GetCurCurveCount()
-    {//获取当前要画的曲线的点个数
-        return _curCurveIdx + 1;
-    }
-
-    /// <summary>
-    /// 获取笔画数据
-    /// </summary>
-    public string GetStrokeData()
+    private List<UIVertex> GetSemiCircleVertices(bool isStart)
     {
+        if (_vertices == null || _vertices.Length <= 0)
+        {
+            return null;
+        }
+        int sIdx = 0, eIdx = 0;
+        Vector3[] v3Arr = null;
+        if(isStart)
+        {
+            sIdx = 0;
+            eIdx = 1;
+            v3Arr = _verticesSCS;
+        }
+        else
+        {
+            sIdx = _vertices.Length - 1;
+            eIdx = _vertices.Length - 2;
+            v3Arr = _verticesSCEPatial;
+        }
+        if(v3Arr == null || v3Arr.Length <= 0)
+        {
+            return null;
+        }
+        List<UIVertex> scVertices = new List<UIVertex>();
+        int triangleCount = SemiCircleSegment;
+        for (int i = 0; i < triangleCount; i++)
+        {
+            scVertices.Add(GetUIVertexByPos(v3Arr[0]));
+            if (i == 0)
+            {//首
+                scVertices.Add(GetUIVertexByPos(v3Arr[triangleCount - 1]));
+                scVertices.Add(GetVerticesCurvePoint(sIdx));
+            }
+            else if (i == triangleCount - 1)
+            {//尾
+                scVertices.Add(GetVerticesCurvePoint(eIdx));
+                scVertices.Add(GetUIVertexByPos(v3Arr[1]));
+            }
+            else
+            {
+                scVertices.Add(GetUIVertexByPos(v3Arr[i]));
+                scVertices.Add(GetUIVertexByPos(v3Arr[i + 1]));
+            }
+        }
+        return scVertices;
+    }
+    private UIVertex GetVerticesCurvePoint(int idx)
+    {
+        if (_vertices == null || _vertices.Length <= idx)
+        {
+            return UIVertex.simpleVert;
+        }
+        return GetUIVertexByPos(_vertices[idx]);
+    }
+    private UIVertex GetUIVertexByPos(Vector3 pos)
+    {
+        UIVertex vert = UIVertex.simpleVert;
+        vert.color = color;
+        vert.uv0 = Vector2.zero;
+        vert.position = pos;
+        return vert;
+    }
+
+    public string GetStrokeData()
+    {// 获取笔画数据
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
         sb.Append("[");
-        for (int i = 0; i < _curvePoints.Count; i++)
+        for (int i = 0; i < _curvePoints.Length; i++)
         {
             sb.Append("{");
             sb.AppendFormat("\"x\":{0},\"y\":{1}", _curvePoints[i].x, _curvePoints[i].y);
             sb.Append("}");
-            if (i < _curvePoints.Count - 1)
+            if (i < _curvePoints.Length - 1)
             {
                 sb.Append(",");
             }
@@ -213,12 +287,12 @@ public class UIStroke : MaskableGraphic
     {
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
         sb.Append("[");
-        for (int i = 0; i < _vertices.Count; i++)
+        for (int i = 0; i < _verticesCurve.Length; i++)
         {
             sb.Append("{");
-            sb.AppendFormat("\"x\":{0},\"y\":{1},\"z\":{2}", _vertices[i].x, _vertices[i].y, _vertices[i].z);
+            sb.AppendFormat("\"x\":{0},\"y\":{1},\"z\":{2}", _verticesCurve[i].x, _verticesCurve[i].y, _verticesCurve[i].z);
             sb.Append("}");
-            if (i < _vertices.Count - 1)
+            if (i < _verticesCurve.Length - 1)
             {
                 sb.Append(",");
             }
@@ -228,67 +302,15 @@ public class UIStroke : MaskableGraphic
     }
 
     #region 生成mesh数据
-    private void BuildCurveMesh()
-    {//isPartial:是否是部分的
-        ResetVUT();
-        if (_strokeType == StrokeType.Point)
-        {
-            _curCurveIdx = 0;
-            CalCircleMeshData(SemiCircleSegment * 2);
-        }
-        else
-        {
-            if(!_isPartial)
-            {
-                _curCurveIdx = _curvePoints.Count - 1;
-            }
-            GetPartialCurvePoints();
-            _vertices = GetVertices(_curvePointsPartial, _width * 0.5f);
-            if (_vertices == null)
-            {
-                _curveVertexCount = 0;
-                return;
-            }
-            _curveVertexCount = _vertices.Count;
-            _uv = GetVerticesUV(_curvePointsPartial);
-            for (int i = 2; i < _vertices.Count; i += 2)
-            {
-                _triangles.Add(i - 2);
-                _triangles.Add(i);
-                _triangles.Add(i - 1);
-                _triangles.Add(i - 1);
-                _triangles.Add(i);
-                _triangles.Add(i + 1);
-            }
-            //
-            if (!_isClose)
-            {
-                AddSectorMeshData();
-            }
-        }
-    }
-
-    private void GetPartialCurvePoints()
-    {//获取部分curvePoints
-        int count = GetCurCurveCount();
-        if (count >= 0 && count <= _curvePoints.Count)
-        {
-            _curvePointsPartial = _curvePoints.GetRange(0, count);
-        }
-        else
-        {
-            _curvePointsPartial = null;
-        }
-    }
     private void CalculateCurve()
     {//根据nodeList计算Catmul-Rom曲线，得到curvePoints
-        if (_strokeType == StrokeType.Point)
+        if (_strokeType == StrokeType.Point || _strokeType == StrokeType.Line)
         {
             _curvePoints = _nodeList;
         }
         else
         {
-            int pointCount = _nodeList.Count;
+            int pointCount = _nodeList.Length;
             int segmentCount = _isClose ? pointCount : pointCount - 1;    //闭环的段数为关键点数，非闭环段数为关键点数-1
             List<Vector2> allVertices = new List<Vector2>((_smooth + 1) * segmentCount); //总顶点数
             Vector2[] tempVertices = new Vector2[_smooth + 1];
@@ -324,153 +346,23 @@ public class UIStroke : MaskableGraphic
                     allVertices.Add(tempVertices[j]);
                 }
             }
-            _curvePoints = allVertices;
+            _curvePoints = allVertices.ToArray();
         }
-    }
-    private List<Vector3> GetVertices(List<Vector2> points, float expands)
-    {
-        if (points == null || points.Count <= 0)
-        {
-            return null;
-        }
-        List<Vector3> combinePoints = new List<Vector3>();
-        if (points.Count == 1)
-        {//如果只有一个点，则需要根据切线方向求其两边的顶点
-            Vector2 point = points[0];
-            Quaternion q = _tangentQuaternions[_curCurveIdx];
-            Vector2 tanV2 = q * Vector2.up;
-            tanV2.Set(tanV2.y, -tanV2.x);
-            combinePoints.Add(point + tanV2 * expands);
-            combinePoints.Add(point - tanV2 * expands);
-            return combinePoints;
-        }
-        List<CurveSegment2D> segments = new List<CurveSegment2D>();
-        for (int i = 1; i < points.Count; i++)
-        {
-            segments.Add(new CurveSegment2D(points[i - 1], points[i]));
-        }
-        List<CurveSegment2D> segments1 = new List<CurveSegment2D>();
-        List<CurveSegment2D> segments2 = new List<CurveSegment2D>();
-        for (int i = 0; i < segments.Count; i++)
-        {
-            Vector2 vOffset = new Vector2(-segments[i].SegmentVector.y, segments[i].SegmentVector.x).normalized;
-            segments1.Add(new CurveSegment2D(segments[i].point1 + vOffset * expands, segments[i].point2 + vOffset * expands));
-            segments2.Add(new CurveSegment2D(segments[i].point1 - vOffset * expands, segments[i].point2 - vOffset * expands));
-        }
-        List<Vector2> points1 = new List<Vector2>();
-        List<Vector2> points2 = new List<Vector2>();
-        if (segments1.Count != segments2.Count)
-        {
-            Debug.LogError("segments1.Count != segments2.Count");
-            return null;
-        }
-        for (int i = 0; i < segments1.Count; i++)
-        {
-            if (i == 0)
-            {
-                points1.Add(segments1[0].point1);
-                points2.Add(segments2[0].point1);
-            }
-            else
-            {
-                Vector2 crossPoint;
-                if (!CalcLinesIntersection(segments1[i - 1], segments1[i], out crossPoint, 0.1f))
-                {
-                    crossPoint = segments1[i].point1;
-                }
-                points1.Add(crossPoint);
-                if (!CalcLinesIntersection(segments2[i - 1], segments2[i], out crossPoint, 0.1f))
-                {
-                    crossPoint = segments2[i].point1;
-                }
-                points2.Add(crossPoint);
-            }
-            if (i == segments1.Count - 1)
-            {
-                points1.Add(segments1[i].point2);
-                points2.Add(segments2[i].point2);
-            }
-        }
-        for (int i = 0; i < points.Count; i++)
-        {
-            combinePoints.Add(points1[i]);
-            combinePoints.Add(points2[i]);
-        }
-        return combinePoints;
     }
     private void HandelClosedRing()
     {//处理闭环
-        //闭环处理
-        if (_isClose && _vertices.Count > 3)
+        if (_isClose && _verticesCurve.Length > 3)
         {
-            Vector2 v20 = (_vertices[0] + _bakCloseRingLast2Vertices[0]) / 2;
-            Vector2 v21 = (_vertices[1] + _bakCloseRingLast2Vertices[1]) / 2;
-            _vertices[0] = v20;
-            _vertices[1] = v21;
-            if (!_isPartial)
+            Vector2 v20 = (_verticesCurve[0] + _verticesCloseRingLast2[0]) / 2;
+            Vector2 v21 = (_verticesCurve[1] + _verticesCloseRingLast2[1]) / 2;
+            _verticesCurve[0] = v20;
+            _verticesCurve[1] = v21;
+            if (_percent == 1)
             {
-                _vertices[_vertices.Count - 2] = v20;
-                _vertices[_vertices.Count - 1] = v21;
+                _verticesCurve[_verticesCurve.Length - 2] = v20;
+                _verticesCurve[_verticesCurve.Length - 1] = v21;
             }
         }
-    }
-    private List<Vector2> GetVerticesUV(List<Vector2> points)
-    {
-        List<Vector2> uvs = new List<Vector2>();
-        float totalLength = 0;
-        float totalLengthReciprocal = 0;
-        float curLength = 0;
-        for (int i = 1; i < points.Count; i++)
-        {
-            totalLength += Vector2.Distance(points[i - 1], points[i]);
-        }
-        totalLengthReciprocal = _uvTiling / totalLength;
-        for (int i = 0; i < points.Count; i++)
-        {
-            if (i == 0)
-            {
-                uvs.Add(new Vector2(0, 1));
-                uvs.Add(new Vector2(0, 0));
-            }
-            else
-            {
-                if (i == points.Count - 1)
-                {
-                    uvs.Add(new Vector2(_uvTiling, 1));
-                    uvs.Add(new Vector2(_uvTiling, 0));
-                }
-                else
-                {
-                    curLength += Vector2.Distance(points[i - 1], points[i]);
-                    float uvx = curLength * totalLengthReciprocal;
-                    uvs.Add(new Vector2(uvx, 1));
-                    uvs.Add(new Vector2(uvx, 0));
-                }
-            }
-        }
-        return uvs;
-    }
-    private bool CalcLinesIntersection(CurveSegment2D segment1, CurveSegment2D segment2, out Vector2 intersection, float angleLimit)
-    {//计算两线交点
-        intersection = Vector2.zero;
-        Vector2 p1 = segment1.point1;
-        Vector2 p2 = segment1.point2;
-        Vector2 p3 = segment2.point1;
-        Vector2 p4 = segment2.point2;
-        float denominator = (p2.y - p1.y) * (p4.x - p3.x) - (p1.x - p2.x) * (p3.y - p4.y);
-        if (denominator == 0)
-        {//如果分母为0，则表示平行
-            return false;
-        }
-        float angle = Vector2.Angle(segment1.SegmentVector, segment2.SegmentVector);    // 检查段之间的角度
-        if (angle < angleLimit || (180f - angle) < angleLimit)
-        {//如果两个段之间的角度太小，我们将它们视为平行
-            return false;
-        }
-        float x = ((p2.x - p1.x) * (p4.x - p3.x) * (p3.y - p1.y) + (p2.y - p1.y) * (p4.x - p3.x) * p1.x - (p4.y - p3.y) * (p2.x - p1.x) * p3.x) / denominator;
-        float y = -((p2.y - p1.y) * (p4.y - p3.y) * (p3.x - p1.x) + (p2.x - p1.x) * (p4.y - p3.y) * p1.y - (p4.x - p3.x) * (p2.y - p1.y) * p3.y) / denominator;
-        intersection.Set(x, y);
-        return true;
     }
     private void CalTangent()
     {//计算切线角度;使用curvePoint来计算
@@ -478,56 +370,68 @@ public class UIStroke : MaskableGraphic
         {
             return;
         }
-        if(_curvePoints.Count < 2)
+        if(_curvePoints.Length < 2)
         {
             return;
         }
-        _tangentQuaternions = new List<Quaternion>();
-        for (int i = 0; i < _curvePoints.Count; i++)
+        Vector2 vVertical = Vector2.zero;
+        _tangentQuaternions = new Quaternion[_curvePoints.Length];
+        for (int i = 0; i < _curvePoints.Length; i++)
         {
             if (i == 0)
             {
-                _tangentQuaternions.Add(Quaternion.FromToRotation(Vector3.up, _curvePoints[0] - _curvePoints[1]));
+                _tangentQuaternions[i] = Quaternion.FromToRotation(Vector3.up, _curvePoints[0] - _curvePoints[1]);
             }
             else
             {
-                _tangentQuaternions.Add(Quaternion.FromToRotation(Vector3.up, _curvePoints[i] - _curvePoints[i - 1]));
+                Vector2 v = _curvePoints[i] - _curvePoints[i - 1];
+                _tangentQuaternions[i] = Quaternion.FromToRotation(Vector3.up, v);
+                if (_tangentQuaternions[i].eulerAngles.x != 0 || _tangentQuaternions[i].eulerAngles.y != 0)
+                {//用于修正Quaternion.FromToRotation()参数为平行向量时会使得尾端半圆翻面的问题
+                    _tangentQuaternions[i] = Quaternion.Euler(0, 0, _tangentQuaternions[i].eulerAngles.z);
+                }
             }
         }
     }
-    #region 半圆
-    /// <summary>
-    /// 创建圆形mesh
-    /// </summary>
-    /// <returns></returns>
+
+    #region 圆
     private void AddSectorMeshData()
-    {
-        if (_vertices == null || _vertices.Count <= 0)
+    {//创建扇形mesh
+        if (_verticesCurve == null || _verticesCurve.Length <= 0)
         {//没有顶点就不生成半圆;
             return;
         }
-        if (_curvePoints == null || _tangentQuaternions == null || _curvePoints.Count <= _curCurveIdx)
+        if (_curvePoints == null || _tangentQuaternions == null)
         {
             return;
         }
-        //生成圆——nodeList只有一个点；生成半圆——nodeList有多个点
-        float radius = _width / 2.0f;
-        float angleDegree = 180;
+        AddSectorMeshDataVer(true);
+        AddSectorMeshDataVer(false);
+    }
+    private void AddSectorMeshDataVer(bool isStart)
+    {
+        Vector3 tmpV = Vector3.zero;
         Vector3 pos = Vector3.zero;
         Quaternion rot = Quaternion.identity;
-        float angleRad = Mathf.Deg2Rad * angleDegree;
-        float angledelta = angleRad / SemiCircleSegment;
-        int verticesCount = SemiCircleSegment;
-        int triangleCount = SemiCircleSegment;
-        Vector3 tmpV = Vector3.zero;
-        Vector2 tmpUV = Vector2.zero;
-        float angleCur = 0;
-        //第一个半圆
-        pos = _curvePoints[0];
-        rot = _tangentQuaternions[0];
-        //int curveVertexCount = _vertices.Count; //曲线顶点数
-        angleCur = angleRad;
-        for (int i = 0; i < verticesCount; i++)
+        float radius = _width / 2.0f;
+        float angleRad = Mathf.Deg2Rad * 180;
+        float angleDelta = angleRad / SemiCircleSegment;
+        float angleCur = angleRad;
+        Vector3[] lst = null;
+        if (isStart)
+        {
+            lst = _verticesSCS;
+            pos = _curvePoints[0];
+            rot = _tangentQuaternions[0];
+        }
+        else
+        {
+            lst = _verticesSCE;
+            int curCurveIdx = GetCurveIdxByPercent(_percent);
+            pos = _curvePoints[curCurveIdx];
+            rot = _tangentQuaternions[curCurveIdx];
+        }
+        for (int i = 0; i < lst.Length; i++)
         {
             if (i == 0)
             {
@@ -538,89 +442,13 @@ public class UIStroke : MaskableGraphic
                 tmpV.Set(radius * Mathf.Cos(angleCur), radius * Mathf.Sin(angleCur), 0);
                 tmpV = rot * tmpV + pos;
             }
-            _vertices.Add(tmpV);
-            tmpUV.Set(tmpV.x / radius / 2 + 0.5f, tmpV.z / radius / 2 + 0.5f);
-            _uv.Add(tmpUV);
-            angleCur -= angledelta;
-        }
-        //triangles
-        for (int i = 0; i < triangleCount; i++)
-        {
-            if (i == 0)
-            {//首
-                _triangles.Add(_curveVertexCount + triangleCount - 1);
-                _triangles.Add(0);
-                _triangles.Add(_curveVertexCount);
-            }
-            else if (i == triangleCount - 1)
-            {//尾
-                _triangles.Add(_curveVertexCount);
-                _triangles.Add(1);
-                _triangles.Add(_curveVertexCount + 1);
-            }
-            else
-            {
-                _triangles.Add(_curveVertexCount);
-                _triangles.Add(_curveVertexCount + i);
-                _triangles.Add(_curveVertexCount + i + 1);
-            }
-        }
-        //-------
-        int curveVertexCountWithSemiCircle = _vertices.Count; //加了半圆的顶点数
-        pos = _curvePoints[_curCurveIdx];
-        rot = _tangentQuaternions[_curCurveIdx];
-        angleCur = angleRad;
-        for (int i = 0; i < verticesCount; i++)
-        {
-            if (i == 0)
-            {
-                tmpV.Set(pos.x, pos.y, 0);
-            }
-            else
-            {
-                tmpV.Set(radius * Mathf.Cos(angleCur), radius * Mathf.Sin(angleCur), 0);
-                tmpV = rot * tmpV + pos;
-            }
-            _vertices.Add(tmpV);
-            tmpUV.Set(tmpV.x / radius / 2 + 0.5f, tmpV.z / radius / 2 + 0.5f);
-            _uv.Add(tmpUV);
-            angleCur -= angledelta;
-            //bak
-            if (_strokeType == StrokeType.Line)
-            {
-                _bakESemiCircleVertices[i].Set(tmpV.x, tmpV.y, 0);
-            }
-        }
-        for (int i = 0; i < triangleCount; i++)
-        {
-            if (i == 0)
-            {//首
-                _triangles.Add(curveVertexCountWithSemiCircle + triangleCount - 1);
-                _triangles.Add(_curveVertexCount - 1);
-                _triangles.Add(curveVertexCountWithSemiCircle);
-            }
-            else if (i == triangleCount - 1)
-            {//尾
-                _triangles.Add(curveVertexCountWithSemiCircle);
-                _triangles.Add(_curveVertexCount - 2);
-                _triangles.Add(curveVertexCountWithSemiCircle + 1);
-            }
-            else
-            {
-                _triangles.Add(curveVertexCountWithSemiCircle);
-                _triangles.Add(curveVertexCountWithSemiCircle + i);
-                _triangles.Add(curveVertexCountWithSemiCircle + i + 1);
-            }
+            lst[i] = tmpV;
+            angleCur -= angleDelta;
         }
     }
-    /// <summary>
-    /// 创建圆形mesh
-    /// </summary>
-    /// <param name="segments">段数</param>
-    /// <returns></returns>
     private void CalCircleMeshData(int segments)
-    {
-        if (_nodeList == null || _nodeList.Count <= 0)
+    {// 创建圆形mesh；segments：段数
+        if (_nodeList == null || _nodeList.Length <= 0)
         {
             return;
         }
@@ -628,14 +456,13 @@ public class UIStroke : MaskableGraphic
         float radius = _width / 2.0f;
         Vector2 pos = _nodeList[0];
         //vertices/uv
-        int verticesCount = segments + 1;
         float angleRad = Mathf.Deg2Rad * 360;
-        float angleCur = angleRad;
+        float angleCur = 0;
         float angledelta = angleRad / segments;
         Vector3 tmpV = Vector3.zero;
         Vector2 tmpUV = Vector2.zero;
-        for (int i = 0; i < verticesCount; i++)
-        {
+        for (int i = 0; i <= segments; ++i)
+        {//顶点数为段数+1
             if (i == 0)
             {
                 tmpV.Set(pos.x, pos.y, 0);
@@ -643,56 +470,55 @@ public class UIStroke : MaskableGraphic
             else
             {
                 tmpV.Set(radius * Mathf.Cos(angleCur) + pos.x, radius * Mathf.Sin(angleCur) + pos.y, 0);
+                angleCur += angledelta;
             }
-            _vertices.Add(tmpV);
+            _vertices[i] = tmpV;
             tmpUV.Set(tmpV.x / radius / 2 + 0.5f, tmpV.z / radius / 2 + 0.5f);
-            _uv.Add(tmpUV);
-            angleCur -= angledelta;
-        }
-        //triangles
-        int triangleCount = segments;
-        for (int i = 0; i < triangleCount; i++)
-        {
-            _triangles.Add(0);
-            if (i == triangleCount - 1)
-            {//尾闭合
-                _triangles.Add(triangleCount);
-                _triangles.Add(1);
-            }
-            else
-            {
-                _triangles.Add(i + 1);
-                _triangles.Add(i + 2);
-            }
         }
     }
     #endregion
 
     private void ResetVUT()
     {
-        if (_vertices == null)
+        //vt
+        int vLen = -1;
+        if (_strokeType == StrokeType.Point)
         {
-            _vertices = new List<Vector3>();
+            int circleSegment = SemiCircleSegment * 2;
+            vLen = circleSegment + 1;
         }
         else
         {
-            _vertices.Clear();
+            int totalSemiCircleSegment = _isClose ? 0 : SemiCircleSegment * 2;
+            vLen = _curvePoints.Length * 2 + totalSemiCircleSegment;
         }
-        if (_uv == null)
+        if (_vertices == null || _vertices.Length != vLen)
         {
-            _uv = new List<Vector2>();
-        }
-        else
-        {
-            _uv.Clear();
-        }
-        if (_triangles == null)
-        {
-            _triangles = new List<int>();
+            _vertices = new Vector3[vLen];
         }
         else
         {
-            _triangles.Clear();
+            Array.Clear(_vertices, 0, _vertices.Length);
+        }
+        //bak vt
+        int cLen = _curvePoints.Length * 2;
+        if (_verticesCurve == null || _verticesCurve.Length != cLen)
+        {
+            _verticesCurve = new Vector3[cLen];
+        }
+        else
+        {
+            Array.Clear(_verticesCurve, 0, _verticesCurve.Length);
+        }
+        if(_verticesSCS == null || _verticesSCS.Length != SemiCircleSegment || _verticesSCE == null || _verticesSCE.Length != SemiCircleSegment)
+        {
+            _verticesSCS = new Vector3[SemiCircleSegment];
+            _verticesSCE = new Vector3[SemiCircleSegment];
+        }
+        else
+        {
+            Array.Clear(_verticesSCS, 0, _verticesSCS.Length);
+            Array.Clear(_verticesSCE, 0, _verticesSCE.Length);
         }
     }
     #endregion

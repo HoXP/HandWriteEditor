@@ -53,8 +53,6 @@
   <ItemGroup>
      <Compile Include="Assets\Editor\2DUI\CurveMeshBuilderUIEditor.cs" />
      <Compile Include="Assets\Editor\2DUI\ExportMeshDataUIEditor.cs" />
-     <Compile Include="Assets\Editor\3DMesh\CurveMeshBuilderEditor.cs" />
-     <Compile Include="Assets\Editor\3DMesh\ExportMeshDataEditor.cs" />
      <Compile Include="Assets\Editor\UIComponentMenuItemEditor.cs" />
      <Compile Include="Assets\Editor\UIStrokeEditor.cs" />
  <Reference Include="UnityEngine.UI">
@@ -127,7 +125,7 @@
  <HintPath>C:/Program Files/Unity/Editor/Data/PlaybackEngines/windowsstandalonesupport/UnityEditor.WindowsStandalone.Extensions.dll</HintPath>
  </Reference>
  <Reference Include="LitJson">
- <HintPath>D:/U3D_Project/PackZip/res/Tools/HandWriteEditor/Assets/Plugins/LitJson.dll</HintPath>
+ <HintPath>D:/U3D_Project/xuetang_res/Tools/HandWriteEditor/Assets/Plugins/LitJson.dll</HintPath>
  </Reference>
  <Reference Include="UnityEditor.Advertisements">
  <HintPath>C:/ProgramData/Unity/cache/packages/packages.unity.com/com.unity.ads@1.0.7/Editor/UnityEditor.Advertisements.dll</HintPath>

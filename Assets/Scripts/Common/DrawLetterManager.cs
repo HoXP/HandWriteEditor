@@ -126,6 +126,47 @@ public class DrawLetterManager
         }
         return null;
     }
+
+    internal void RegisterExporter()
+    {//使LitJson支持float，Vector，Quaternion
+        JsonMapper.RegisterImporter<string, float>((input) => { return float.Parse(input); });
+        JsonMapper.RegisterImporter<double, float>((input) => { return (float)input; });
+
+        JsonMapper.RegisterExporter<float>((obj, writer) => writer.Write(Convert.ToDouble(obj)));
+        JsonMapper.RegisterExporter<Vector2>(delegate (Vector2 obj, JsonWriter writer)
+        {
+            writer.WriteObjectStart();
+            writer.WritePropertyName("x");
+            writer.Write(obj.x);
+            writer.WritePropertyName("y");
+            writer.Write(obj.y);
+            writer.WriteObjectEnd();
+        });
+        JsonMapper.RegisterExporter<Vector3>(delegate (Vector3 obj, JsonWriter writer)
+        {
+            writer.WriteObjectStart();
+            writer.WritePropertyName("x");
+            writer.Write(obj.x);
+            writer.WritePropertyName("y");
+            writer.Write(obj.y);
+            writer.WritePropertyName("z");
+            writer.Write(obj.z);
+            writer.WriteObjectEnd();
+        });
+        JsonMapper.RegisterExporter<Quaternion>(delegate (Quaternion obj, JsonWriter writer)
+        {
+            writer.WriteObjectStart();
+            writer.WritePropertyName("x");
+            writer.Write(obj.x);
+            writer.WritePropertyName("y");
+            writer.Write(obj.y);
+            writer.WritePropertyName("z");
+            writer.Write(obj.z);
+            writer.WritePropertyName("w");
+            writer.Write(obj.w);
+            writer.WriteObjectEnd();
+        });
+    }
 }
 
 [Serializable]
@@ -141,6 +182,9 @@ public class Stroke
     public bool isClose = false;    //该mesh是否闭合
     public int smooth = 0;  //相邻关键结点之间生成曲线结点个数，越多越平滑
     public float width = 0; //该mesh的宽度
+    #region Apple
+    public List<float> applePercentList = null;
+    #endregion
     public List<Vector2> nodeList;    //曲线控制点列表
     //反序列化时根据nodeList算法生成↓
     public List<Vector2> curvePoints;   //曲线上的点列表

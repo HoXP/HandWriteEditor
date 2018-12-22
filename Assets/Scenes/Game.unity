@@ -193,7 +193,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &991146033
+--- !u!1001 &1477130123
 Prefab:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -295,6 +295,16 @@ Prefab:
       propertyPath: m_Camera
       value: 
       objectReference: {fileID: 593640498}
+    - target: {fileID: 114825087094548068, guid: 1ca5a3004a6a60b4d837ddd38b3bd5ba,
+        type: 2}
+      propertyPath: charactor
+      value: p
+      objectReference: {fileID: 0}
+    - target: {fileID: 114825087094548068, guid: 1ca5a3004a6a60b4d837ddd38b3bd5ba,
+        type: 2}
+      propertyPath: curIdx
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 1ca5a3004a6a60b4d837ddd38b3bd5ba, type: 2}
   m_IsPrefabParent: 0

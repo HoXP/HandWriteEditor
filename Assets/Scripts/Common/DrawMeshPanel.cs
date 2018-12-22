@@ -1,7 +1,4 @@
-﻿using LitJson;
-using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -12,10 +9,10 @@ public class DrawMeshPanel : MonoBehaviour
     [SerializeField]
     private string charactor = "B";
     [SerializeField]
-    private byte curIdx = 3; //当前可画的笔画索引，其他索引的笔画不响应;1基
+    private byte curIdx = 3;    //当前可画的笔画索引，其他索引的笔画不响应;1基
     [SerializeField]
     private float BeginDragDistanceThreshold = 100;
-    private int _curCurvePointIdx = 0;    //当前曲线上点的索引
+    private int _curCurvePointIdx = 0;  //当前曲线上点的索引
 
     private bool _canDrag = false;
     private Stroke _curStroke = null;
@@ -23,7 +20,7 @@ public class DrawMeshPanel : MonoBehaviour
     [SerializeField]
     private float countDownInternal = 0.02f;    //Tween频率
     [SerializeField]
-    private float TouchDistanceThreshold = 30;    //触控点离最近的点的阈值，超过就表示过远
+    private float TouchDistanceThreshold = 30;  //触控点离最近的点的阈值，超过就表示过远
     private Vector2 _pointTouch = Vector2.zero;
     //UI
     private MeshRoot meshRoot = null;
@@ -32,7 +29,6 @@ public class DrawMeshPanel : MonoBehaviour
     private Image imgTouchPad = null;
     private UIStroke tplStroke = null;
     private UIStroke curStroke = null;
-    private UILine tplLine = null;
     //data
     private float _percent = 0;
     private Vector2 _pointProection = Vector2.zero;
@@ -41,15 +37,13 @@ public class DrawMeshPanel : MonoBehaviour
 
     private void Awake()
     {
-        RegisterExporter();
+        DrawLetterManager.Instance.RegisterExporter();
 
         meshRoot = transform.Find("MeshRoot").GetComponent<MeshRoot>();
         meshRootD = transform.Find("MeshRootD").GetComponent<MeshRoot>();
 
         tplStroke = transform.Find("tplStroke").GetComponent<UIStroke>();
         tplStroke.gameObject.SetActive(false);
-        tplLine = transform.Find("tplLine").GetComponent<UILine>();
-        tplLine.gameObject.SetActive(false);
 
         btnDraw = transform.Find("btnDraw").GetComponent<Button>();
         btnDraw.onClick.AddListener(OnClickDraw);
@@ -77,35 +71,6 @@ public class DrawMeshPanel : MonoBehaviour
         entry.callback.AddListener(OnPointerClick);
         et.triggers.Add(entry);
     }
-    private void RegisterExporter()
-    {//使LitJson支持float，Vector，Quaternion
-        JsonMapper.RegisterExporter<float>((obj, writer) => writer.Write(Convert.ToDouble(obj)));
-        JsonMapper.RegisterImporter<double, float>((input) => { return (float)input; });
-        JsonMapper.RegisterExporter<Vector2>(delegate (Vector2 obj, JsonWriter writer)
-        {
-            writer.WriteArrayStart();
-            writer.Write(Convert.ToDouble(obj.x));
-            writer.Write(Convert.ToDouble(obj.y));
-            writer.WriteArrayEnd();
-        });
-        JsonMapper.RegisterExporter<Vector3>(delegate (Vector3 obj, JsonWriter writer)
-        {
-            writer.WriteArrayStart();
-            writer.Write(Convert.ToDouble(obj.x));
-            writer.Write(Convert.ToDouble(obj.y));
-            writer.Write(Convert.ToDouble(obj.z));
-            writer.WriteArrayEnd();
-        });
-        JsonMapper.RegisterExporter<Quaternion>(delegate (Quaternion obj, JsonWriter writer)
-        {
-            writer.WriteArrayStart();
-            writer.Write(Convert.ToDouble(obj.x));
-            writer.Write(Convert.ToDouble(obj.y));
-            writer.Write(Convert.ToDouble(obj.z));
-            writer.Write(Convert.ToDouble(obj.w));
-            writer.WriteArrayEnd();
-        });
-    }
 
     private void Start()
     {
@@ -123,7 +88,6 @@ public class DrawMeshPanel : MonoBehaviour
             sb.Append(s);
         }
         fs.Close();
-        //
         DrawLetterManager.Instance.UpdateLetterDictFromJson(sb.ToString());
         DrawMeshByData();
     }
@@ -132,8 +96,8 @@ public class DrawMeshPanel : MonoBehaviour
     {// 自动绘制全部mesh
         meshRoot.DestroyGO();
         meshRootD.DestroyGO();
-        meshRoot.Init(charactor, tplStroke, tplLine);
-        meshRootD.Init(charactor, tplStroke, tplLine, true);
+        meshRoot.Init(charactor, tplStroke);
+        meshRootD.Init(charactor, tplStroke, true);
     }
 
     private void OnClickDraw()
@@ -224,7 +188,7 @@ public class DrawMeshPanel : MonoBehaviour
             //求投影点
             Vector3 vProection = Vector3.Project(_pointTouch - _pointS, _pointE - _pointS);
             _percent = vProection.magnitude / (_pointE - _pointS).magnitude;
-            curStroke.UpdateLinePercent(_percent);
+            curStroke.UpdatePercent(_percent);
             _pointProection = _pointS + (Vector2)vProection;
             if (Vector2.Distance(_pointProection, _pointTouch) > TouchDistanceThreshold)
             {
@@ -235,7 +199,7 @@ public class DrawMeshPanel : MonoBehaviour
         else
         {
             UpdateCurCurvePointIdx(ped.position, ped.pressEventCamera);
-            curStroke.UpdateCurCurveIdx(_curCurvePointIdx);
+            curStroke.UpdatePercent(_curCurvePointIdx * 1.0f / (_curStroke.curvePoints.Count - 1));
             if (Vector2.Distance(_curStroke.curvePoints[_curCurvePointIdx], _pointTouch) > TouchDistanceThreshold)
             {
                 _canDrag = false;
@@ -285,20 +249,17 @@ public class DrawMeshPanel : MonoBehaviour
         if (ped == null)
         {
             Debug.LogError(string.Format("ped == null"));
-            //_canDrag = false;
             return;
         }
         if (ped.pointerId < -1 || ped.pointerId > 1)
         {//不允许鼠标中键和右键响应，不允许移动端多点触控
             Debug.LogError(string.Format("ped.pointerId not valid.ped.pointerId={0}", ped.pointerId));
-            //_canDrag = false;
             return;
         }
         _curStroke = DrawLetterManager.Instance.GetStroke(charactor, curIdx);
         if (_curStroke == null)
         {
             Debug.LogError(string.Format("_curMeshInfo == null"));
-            //_canDrag = false;
             return;
         }
         if(_curStroke.curvePoints == null || _curStroke.curvePoints.Count != 1)
@@ -321,7 +282,7 @@ public class DrawMeshPanel : MonoBehaviour
             if (arr[i].gameObject.name.Trim() == curIdx.ToString())
             {
                 curStroke = arr[i];
-                curStroke.UpdateCurCurveIdx(0);
+                curStroke.UpdatePercent(0);
                 break;
             }
         }
@@ -354,7 +315,7 @@ public class DrawMeshPanel : MonoBehaviour
             {
                 _percent -= 0.05f;
                 _percent = Mathf.Clamp01(_percent);
-                curStroke.UpdateLinePercent(_percent);
+                curStroke.UpdatePercent(_percent);
             }
             else
             {
@@ -365,7 +326,7 @@ public class DrawMeshPanel : MonoBehaviour
         {
             if (_curCurvePointIdx-- > -1)
             {
-                curStroke.UpdateCurCurveIdx(_curCurvePointIdx);
+                curStroke.UpdatePercent(_curCurvePointIdx * 1.0f / (_curStroke.curvePoints.Count - 1));
             }
             else
             {
@@ -393,7 +354,6 @@ public class DrawMeshPanel : MonoBehaviour
             if (dotS > 0 && dotE <= 0)
             {
                 _curCurvePointIdx = i + 1;
-                //Debug.Log(string.Format("{0}/{1}:{2},{3}", _curCurvePointIdx, _curStroke.curvePoints.Count, dotS, dotE));
             }
         }
     }

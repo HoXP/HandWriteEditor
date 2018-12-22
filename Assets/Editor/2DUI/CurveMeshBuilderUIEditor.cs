@@ -1,12 +1,13 @@
 ﻿using UnityEngine;
 using UnityEditor;
+using System.Collections.Generic;
 
 [CustomEditor(typeof(CurveMeshBuilderUI))]
 public class CurveMeshBuilderUIEditor : Editor
 {
     private CurveMeshBuilderUI _script;
 
-    void Awake()
+    protected void OnEnable()
     {
         _script = target as CurveMeshBuilderUI;
     }
@@ -14,6 +15,21 @@ public class CurveMeshBuilderUIEditor : Editor
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
+
+        #region Apple
+        EditorGUILayout.BeginVertical();
+
+        if (_script._applePercentList != null && _script._applePercentList.Count > 0)
+        {
+            for (int i = 0; i < _script._applePercentList.Count; i++)
+            {
+                _script._applePercentList[i] = Mathf.Clamp01(_script._applePercentList[i]);
+            }
+            _script.InitApple();
+        }
+
+        EditorGUILayout.EndVertical();
+        #endregion
 
         EditorGUILayout.BeginVertical();
 
@@ -51,7 +67,7 @@ public class CurveMeshBuilderUIEditor : Editor
                 _script.InsertNode(i, pos);
                 _script.selectedNodeIndex = i;
             }
-            if (GUILayout.Button("×", GUILayout.Width(20))) //✖
+            if (GUILayout.Button("×", GUILayout.Width(20)))
             {
                 _script.RemoveNode(i);
                 _script.selectedNodeIndex = i < _script._nodeList.Count ? i : i - 1;

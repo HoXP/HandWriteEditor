@@ -53,14 +53,11 @@
   <ItemGroup>
      <Compile Include="Assets\Scripts\2DUI\CurveMeshBuilderUI.cs" />
      <Compile Include="Assets\Scripts\2DUI\ExportMeshDataUI.cs" />
-     <Compile Include="Assets\Scripts\3DMesh\CurveMeshBuilder.cs" />
-     <Compile Include="Assets\Scripts\3DMesh\DrawCircle.cs" />
-     <Compile Include="Assets\Scripts\3DMesh\DrawLetterManager.cs" />
-     <Compile Include="Assets\Scripts\3DMesh\DrawMeshPanel.cs" />
-     <Compile Include="Assets\Scripts\3DMesh\ExportMeshData.cs" />
-     <Compile Include="Assets\Scripts\3DMesh\MeshRoot.cs" />
-     <Compile Include="Assets\Scripts\Common\UILine.cs" />
+     <Compile Include="Assets\Scripts\Common\DrawLetterManager.cs" />
+     <Compile Include="Assets\Scripts\Common\DrawMeshPanel.cs" />
+     <Compile Include="Assets\Scripts\Common\MeshRoot.cs" />
      <Compile Include="Assets\Scripts\Common\UIStroke.cs" />
+     <Compile Include="Assets\Scripts\MeshUtils.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
  </Reference>
@@ -89,7 +86,7 @@
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/UnitySpatialTracking/RuntimeEditor/UnityEngine.SpatialTracking.dll</HintPath>
  </Reference>
  <Reference Include="LitJson">
- <HintPath>D:/U3D_Project/PackZip/res/Tools/HandWriteEditor/Assets/Plugins/LitJson.dll</HintPath>
+ <HintPath>D:/U3D_Project/xuetang_res/Tools/HandWriteEditor/Assets/Plugins/LitJson.dll</HintPath>
  </Reference>
  <Reference Include="UnityEngine.Analytics">
  <HintPath>C:/ProgramData/Unity/cache/packages/packages.unity.com/com.unity.analytics@1.0.1/UnityEngine.Analytics.dll</HintPath>

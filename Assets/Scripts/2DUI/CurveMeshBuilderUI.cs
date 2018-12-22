@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System;
+using LitJson;
+using UnityEngine.UI;
 
 [ExecuteInEditMode]
 [RequireComponent(typeof(UIStroke))]
@@ -8,6 +10,7 @@ public class CurveMeshBuilderUI : MonoBehaviour
 {// 根据给定关键点动态构建Catmull-Rom曲线网格
     [SerializeField][HideInInspector]
     public List<Vector2> _nodeList = new List<Vector2>();    //结点列表
+    private List<Vector2> _curvePoints = null;
 
     public bool drawGizmos = true;  //是否绘制Gizmos，即表示关键点的Gizmos点及线
     public float gizmosNodeSize = 0.1f; //Gizmos球尺寸
@@ -16,6 +19,11 @@ public class CurveMeshBuilderUI : MonoBehaviour
     public float width = 0.2f;  //mesh宽度
     public int smooth = 5;  //段数
     public float uvTiling = 1f;
+
+    #region Apple
+    public List<float> _applePercentList = null;
+    private RectTransform _tplApple = null;
+    #endregion
 
     private UIStroke _uiStroke = null;
 
@@ -27,10 +35,12 @@ public class CurveMeshBuilderUI : MonoBehaviour
     private void Awake()
     {
         _uiStroke = GetComponent<UIStroke>();
+        _tplApple = transform.root.Find("tplApple").GetComponent<RectTransform>();
     }
     private void OnEnable()
     {
         _uiStroke = GetComponent<UIStroke>();
+        _tplApple = transform.root.Find("tplApple").GetComponent<RectTransform>();
     }
     private void Update()
     {
@@ -69,13 +79,6 @@ public class CurveMeshBuilderUI : MonoBehaviour
                 Gizmos.DrawSphere(prevPosition, gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition));
             }
         }
-        //if(_mesh!=null)
-        //{
-        //    Gizmos.DrawWireSphere(transform.TransformPoint(_mesh.vertices[0]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
-        //    Gizmos.DrawSphere(transform.TransformPoint(_mesh.vertices[1]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
-        //    Gizmos.DrawWireSphere(transform.TransformPoint(_mesh.vertices[_mesh.vertices.Length - 1]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
-        //    Gizmos.DrawSphere(transform.TransformPoint(_mesh.vertices[_mesh.vertices.Length - 2]), gizmosNodeSize * UnityEditor.HandleUtility.GetHandleSize(prevPosition) * 1.5f);
-        //}
     }
 #endif
 
@@ -123,6 +126,8 @@ public class CurveMeshBuilderUI : MonoBehaviour
             _uiStroke = GetComponent<UIStroke>();
         }
         _uiStroke.InitData(_nodeList.ToArray(), width, smooth, isClose);
+        _uiStroke.UpdatePercent(1);
+        _curvePoints = JsonMapper.ToObject<List<Vector2>>(_uiStroke.GetStrokeData());
         UpdateData();
         return true;
     }
@@ -166,8 +171,77 @@ public class CurveMeshBuilderUI : MonoBehaviour
         stroke.isClose = isClose;
         stroke.smooth = smooth;
         stroke.width = width;
+        //stroke.disApple = _disApple;
+        //stroke.disStartApple = _disStartApple;
+        stroke.applePercentList = _applePercentList;
         //曲线关键点
         stroke.nodeList = _nodeList;
         DrawLetterManager.Instance.UpdateLetterDict(charName, stroke);
     }
+
+    #region Apple
+    public void InitApple()
+    {
+        if (_curvePoints == null)
+        {
+            return;
+        }
+        DestroyGO();
+        if(_nodeList.Count == 1)
+        {
+
+        }
+        else if (_nodeList.Count == 2)
+        {
+            if(_applePercentList!=null && _applePercentList.Count > 0)
+            {
+                Vector2 sNode = _curvePoints[0];
+                Vector2 eNode = _curvePoints[_curvePoints.Count - 1];
+                Vector2 vSE = eNode - sNode;
+                float disSE = Vector2.Distance(sNode, eNode);
+                for (int i = 0; i < _applePercentList.Count; i++)
+                {
+                    RectTransform go = GameObject.Instantiate<RectTransform>(_tplApple, transform);
+                    go.name = _applePercentList[i].ToString();
+                    go.gameObject.SetActive(true);
+                    go.anchoredPosition = sNode + vSE * _applePercentList[i];
+                }
+            }
+        }
+        else
+        {
+            if (_applePercentList != null && _applePercentList.Count > 0)
+            {
+                for (int i = 0; i < _applePercentList.Count; i++)
+                {
+                    RectTransform go = GameObject.Instantiate<RectTransform>(_tplApple, transform);
+                    go.name = _applePercentList[i].ToString();
+                    go.gameObject.SetActive(true);
+                    int idx = GetIdxByPercent(_applePercentList[i]);
+                    go.anchoredPosition = _curvePoints[idx];
+                }
+            }
+        }
+    }
+    private int GetIdxByPercent(float percent)  //根据比例获取索引
+    {
+        if(_curvePoints == null || _curvePoints.Count <= 0)
+        {
+            return 0;
+        }
+        int len = _curvePoints.Count - 1;
+        int idx = Mathf.RoundToInt(len * percent);
+        idx = Mathf.Clamp(idx, 0, len);
+        return idx;
+    }
+
+    internal void DestroyGO()
+    {
+        Image[] cld = transform.GetComponentsInChildren<Image>();
+        for (int i = cld.Length - 1; i >= 0; --i)
+        {
+            GameObject.DestroyImmediate(cld[i].gameObject);
+        }
+    }
+    #endregion
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class MeshRoot : MonoBehaviour
 {
-    internal void Init(string charactor, UIStroke tplStroke, UILine tplLine, bool isDraw = false)
+    internal void Init(string charactor, UIStroke tplStroke, bool isDraw = false)
     {
         Dictionary<string, Letter> tmpDict = DrawLetterManager.Instance.LetterDict;
         if (tmpDict == null)
@@ -38,22 +38,12 @@ public class MeshRoot : MonoBehaviour
             if (isDraw)
             {
                 stk.color = new Color(1, 0.6353f, 0, 1f);
-                if (tmpStrok.nodeList.Count == 1)
-                {
-                    stk.UpdateCurCurveIdx(-1);
-                }
-                else if(tmpStrok.nodeList.Count == 2)
-                {
-                    stk.UpdateLinePercent(0);
-                }
-                else
-                {
-                    stk.UpdateCurCurveIdx(-1);
-                }
+                stk.UpdatePercent(0);
             }
             else
             {
                 stk.color = Color.green;
+                stk.UpdatePercent(1);
 #if UNITY_EDITOR
                 _curvePoints = JsonMapper.ToObject<List<Vector2>>(stk.GetStrokeData());
                 _vertices = JsonMapper.ToObject<List<Vector3>>(stk.GetStrokeVertices());
@@ -65,11 +55,6 @@ public class MeshRoot : MonoBehaviour
 
     internal void DestroyGO()
     {
-        UILine[] arrLine = transform.GetComponentsInChildren<UILine>();
-        for (int i = arrLine.Length - 1; i >= 0; --i)
-        {
-            GameObject.Destroy(arrLine[i].gameObject);
-        }
         UIStroke[] arr1 = transform.GetComponentsInChildren<UIStroke>();
         for (int i = arr1.Length - 1; i >= 0; --i)
         {
