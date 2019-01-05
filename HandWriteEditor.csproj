@@ -225,6 +225,7 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\2DUI\CurveMeshBuilderUI.cs" />
     <Compile Include="Assets\Scripts\2DUI\ExportMeshDataUI.cs" />
+    <Compile Include="Assets\Scripts\CatmullRomDemo.cs" />
     <Compile Include="Assets\Scripts\Common\DrawLetterManager.cs" />
     <Compile Include="Assets\Scripts\Common\DrawMeshPanel.cs" />
     <Compile Include="Assets\Scripts\Common\MeshRoot.cs" />

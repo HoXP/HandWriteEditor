@@ -154,6 +154,10 @@ public class UIStroke : MaskableGraphic
         vh.Clear();
         if (_strokeType == StrokeType.Point)
         {
+            if(_vertices == null || _vertices.Length <= 0)
+            {
+                return;
+            }
             List<UIVertex> scVertices = new List<UIVertex>();
             int segments = SemiCircleSegment * 2;
             for (int i = 0; i < segments; i++)
@@ -191,7 +195,6 @@ public class UIStroke : MaskableGraphic
                         UIVertex vert = UIVertex.simpleVert;
                         vert.color = color;
                         vert.position = _vertices[i + j];
-                        vert.uv0 = Vector2.zero;
                         _polys[j] = vert;
                     }
                     UIVertex tmp = _polys[0];
@@ -303,7 +306,7 @@ public class UIStroke : MaskableGraphic
 
     #region 生成mesh数据
     private void CalculateCurve()
-    {//根据nodeList计算Catmul-Rom曲线，得到curvePoints
+    {//根据nodeList计算Catmull-Rom曲线，得到curvePoints
         if (_strokeType == StrokeType.Point || _strokeType == StrokeType.Line)
         {
             _curvePoints = _nodeList;
